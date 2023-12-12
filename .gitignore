@@ -1,4 +1,4 @@
-datasets/
+.DS_Store
 outputs/
 __pycache__
 models/__pycache__
