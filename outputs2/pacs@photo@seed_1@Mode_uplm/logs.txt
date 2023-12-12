@@ -1,0 +1,18 @@
+2023-12-12 10:33:23,584:INFO:{'T': 1, 'amp': False, 'batch_size': 24, 'dataset_name': 'pacs', 'device': device(type='cuda'), 'domain': 'photo', 'ema_decay': 0.999, 'eval_step': 512, 'expand_labels': False, 'lambda_u': 1, 'lr': 0.03, 'mu': 5, 'nesterov': True, 'no_progress': False, 'num_workers': 8, 'opt_level': 'O1', 'out': './outputs2', 'resume': '', 'seed': 1, 'start_epoch': 0, 'threshold': 0.95, 'total_steps': 10240, 'train_mode': 'uplm', 'un_thresh': 0.2, 'use_ema': True, 'warmup': 0, 'wdecay': 0.0005}
+2023-12-12 10:33:27,767:INFO:***** Running training *****
+2023-12-12 10:33:27,768:INFO:  Dataset = pacs
+2023-12-12 10:33:27,768:INFO:  Size of labeled set: 210
+2023-12-12 10:33:27,768:INFO:  Size of unlabeled set: 7299
+2023-12-12 10:33:27,768:INFO:  Size of validation set: 812
+2023-12-12 10:33:27,768:INFO:  Size of test set: 1670
+2023-12-12 10:33:27,768:INFO:  Number of Classes = 7
+2023-12-12 10:33:27,768:INFO:  Seed = 1
+2023-12-12 10:33:27,768:INFO:  Target Domain = photo
+2023-12-12 10:33:27,768:INFO:  Num Epochs = 20
+2023-12-12 10:33:27,768:INFO:  Training mode = uplm
+2023-12-12 10:33:27,768:INFO:  Batch size = 24
+2023-12-12 10:33:27,768:INFO:  Total optimization steps = 10240
+
+
+2023-12-12 10:33:28,419:INFO:Epoch Number: 1
+

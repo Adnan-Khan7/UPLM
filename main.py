@@ -9,8 +9,11 @@ from data import *
 from helpers import *
 from utils import AverageMeter, accuracy
 
- 
-# Please keep the fixed seeds for reproducibility 
+
+from models.ema import ModelEMA
+
+
+# Please keep the fixed seeds for reproducibility
 seed = 1
 random.seed(seed)
 np.random.seed(seed)
@@ -132,8 +135,16 @@ def main():
 
     # Create the directory if it doesn't exist
     directory = (
-      args.out + "/" + args.dataset_name + "@" + args.domain+ "@seed_" + str(args.seed) + "@Mode_" + args.train_mode + "/" 
-    
+        args.out
+        + "/"
+        + args.dataset_name
+        + "@"
+        + args.domain
+        + "@seed_"
+        + str(args.seed)
+        + "@Mode_"
+        + args.train_mode
+        + "/"
     )
     os.makedirs(directory, exist_ok=True)
 
@@ -158,12 +169,13 @@ def main():
         + args.domain
         + "/"
     )
+
     labeled_dataset, unlabeled_dataset, validation_dataset, test_dataset = load_dataset(
         data_path, args.dataset_name, args.domain
     )
     train_sampler = RandomSampler
 
-    # train and unlabeled loaders
+    # Train and unlabeled loaders
     labeled_trainloader = DataLoader(
         labeled_dataset,
         sampler=train_sampler(labeled_dataset),
@@ -194,10 +206,12 @@ def main():
         batch_size=args.batch_size,
         num_workers=args.num_workers,
     )
-    # create model and move to device
+
+    # Create model and move to device
     model, num_classes = create_model(args)
     model.to(args.device)
 
+    # no_decay is for excluding bias and BN parameters from weight decay
     no_decay = ["bias", "bn"]
     grouped_parameters = [
         {
@@ -218,22 +232,24 @@ def main():
         },
     ]
 
+    # Create optimizer
     optimizer = optim.SGD(
         grouped_parameters, lr=args.lr, momentum=0.9, nesterov=args.nesterov
     )
 
+    # Create learning rate scheduler
     args.epochs = math.ceil(args.total_steps / args.eval_step)
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, args.warmup, args.total_steps
     )
 
+    # Create EMA model
     if args.use_ema:
-        from models.ema import ModelEMA
-
         ema_model = ModelEMA(args, model, args.ema_decay)
 
     args.start_epoch = 0
 
+    # Resume from checkpoint
     if args.resume:
         logger.info("==> Resuming from checkpoint..")
         assert os.path.isfile(args.resume), "Error: no checkpoint directory found!"
@@ -249,9 +265,8 @@ def main():
         optimizer.load_state_dict(checkpoint["optimizer"])
         scheduler.load_state_dict(checkpoint["scheduler"])
 
+    # Initialize AMP
     if args.amp:
-        from apex import amp
-
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level)
 
     logger.info("***** Running training *****")
@@ -281,6 +296,7 @@ def main():
     print(f"  Training mode = {args.train_mode}")
 
     model.zero_grad()
+
     train(
         args,
         labeled_trainloader,
@@ -305,12 +321,9 @@ def train(
     ema_model,
     scheduler,
 ):
-    if args.amp:
-        from apex import amp
     global best_acc, best_acc_valid
     test_accs = []
     valid_accs = []
-    predictions = []
     end = time.time()
 
     labeled_iter = iter(labeled_trainloader)
@@ -322,8 +335,8 @@ def train(
         batch_time = AverageMeter()
         data_time = AverageMeter()
         losses = AverageMeter()
-        losses_x = AverageMeter()
-        losses_u = AverageMeter()
+        losses_x = AverageMeter()  # labeled loss
+        losses_u = AverageMeter()  # unlabeled loss
         mask_probs = AverageMeter()
         logger.info("Epoch Number: {}\n".format(epoch + 1))
         if not args.no_progress:
@@ -340,6 +353,8 @@ def train(
                 (inputs_u_w, inputs_u_s), targets_unlabeled = next(unlabeled_iter)
             except:
                 unlabeled_iter = iter(unlabeled_trainloader)
+                # inputs_u_w is weakly augmented unlabeled data
+                # inputs_u_s is strongly augmented unlabeled data
                 (inputs_u_w, inputs_u_s), targets_unlabeled = next(unlabeled_iter)
 
             data_time.update(time.time() - end)
@@ -361,21 +376,25 @@ def train(
             max_probs, targets_u = torch.max(pseudo_label, dim=-1)
 
             if args.train_mode == "uplm" or args.train_mode == "upl":
-                var = get_monte_carlo_predictions(inputs_u_w,targets_u,
-                                    10,
-                                    model,
-                                    get_num_classes(args.dataset_name),
-                                    len(inputs_u_w))
+                var = get_monte_carlo_predictions(
+                    input_s=inputs_u_w,
+                    target_s=targets_u,
+                    forward_passes=10,
+                    model=model,
+                    n_classes=get_num_classes(args.dataset_name),
+                    n_samples=len(inputs_u_w),
+                )
 
                 model.train()
-                # variance
-                var = var.to(device='cuda')
+
+                # Calculate the variance
+                var = var.to(device="cuda")
                 row_idxs = np.arange(var.shape[0])
                 col_idxs = targets_u
                 var_min = var[row_idxs, col_idxs]
                 mask_p = max_probs.ge(args.threshold).float()
                 mask_var = var_min.ge(args.un_thresh).float()
-                mask = mask_p*mask_var
+                mask = mask_p * mask_var
                 del var, var_min
             else:
                 mask = max_probs.ge(args.threshold).float()
@@ -398,6 +417,7 @@ def train(
             scheduler.step()
             if args.use_ema:
                 ema_model.update(model)
+
             model.zero_grad()
 
             batch_time.update(time.time() - end)
@@ -432,23 +452,54 @@ def train(
         total = len(targets_pl)
         if total > 0:
             pl_accuracy = correct / total
-            # print("pseudo labels accuracy: ", pl_accuracy.item()*100)
             logger.info("Number of Pseudo Labels: {}\n".format(total))
             logger.info("Pseudo Labels Accuracy: {}".format(pl_accuracy * 100))
 
-    
         if args.train_mode == "uplm" or args.train_mode == "ma":
             if epoch == 0:
                 test_model = ema_model.ema
             else:
                 test_model, num_classes = create_model(args)
                 # Load the state dicts of the three models
-                best_model_state_dict = torch.load(args.out + "/" + args.dataset_name + "@" + args.domain+ "@seed_" + str(args.seed) + "@Mode_" + args.train_mode + "/" 'model_best_valid.pth.tar')['state_dict']
-                last_model_state_dict = torch.load(args.out + "/" + args.dataset_name + "@" + args.domain+ "@seed_" + str(args.seed) + "@Mode_" + args.train_mode + "/" 'checkpoint.pth.tar')['state_dict']
+                best_model_state_dict = torch.load(
+                    args.out
+                    + "/"
+                    + args.dataset_name
+                    + "@"
+                    + args.domain
+                    + "@seed_"
+                    + str(args.seed)
+                    + "@Mode_"
+                    + args.train_mode
+                    + "/"
+                    "model_best_valid.pth.tar"
+                )["state_dict"]
+                last_model_state_dict = torch.load(
+                    args.out
+                    + "/"
+                    + args.dataset_name
+                    + "@"
+                    + args.domain
+                    + "@seed_"
+                    + str(args.seed)
+                    + "@Mode_"
+                    + args.train_mode
+                    + "/"
+                    "checkpoint.pth.tar"
+                )["state_dict"]
                 ema_model_state_dict = ema_model.ema.state_dict()
-                # Combine the state dicts into a single dictionary
-                combined_state_dict = {k: (best_model_state_dict[k] + last_model_state_dict[k] + ema_model_state_dict[k]) / 3
-                                       for k in best_model_state_dict.keys() & last_model_state_dict.keys() & ema_model_state_dict.keys()}
+                # Average the state dicts into a single dictionary
+                combined_state_dict = {
+                    k: (
+                        best_model_state_dict[k]
+                        + last_model_state_dict[k]
+                        + ema_model_state_dict[k]
+                    )
+                    / 3
+                    for k in best_model_state_dict.keys()
+                    & last_model_state_dict.keys()
+                    & ema_model_state_dict.keys()
+                }
 
                 # Load the combined state dict into the new model
                 test_model.load_state_dict(combined_state_dict)
@@ -459,9 +510,10 @@ def train(
             else:
                 test_model = model
 
-        valid_loss, valid_acc = valid(args, val_loader, test_model, epoch)
-        test_loss, test_acc = test(args, test_loader, test_model, epoch)
+        _, valid_acc = valid(args, val_loader, test_model, epoch)
+        _, test_acc = test(args, test_loader, test_model, epoch)
 
+        # Save the model if it is the best so far
         is_best = test_acc > best_acc
         best_acc = max(test_acc, best_acc)
 
@@ -493,7 +545,16 @@ def train(
                 },
                 is_best,
                 is_best_valid,
-                args.out + "/" + args.dataset_name + "@" + args.domain+ "@seed_" + str(args.seed) + "@Mode_" + args.train_mode + "/" ,
+                args.out
+                + "/"
+                + args.dataset_name
+                + "@"
+                + args.domain
+                + "@seed_"
+                + str(args.seed)
+                + "@Mode_"
+                + args.train_mode
+                + "/",
             )
 
             test_accs.append(test_acc)

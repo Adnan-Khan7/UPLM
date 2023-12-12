@@ -52,7 +52,7 @@ Comparison of baseline model (FixMatch), our Uncertainty-Guided PL approach (UPL
 ## Usage
 
 ### Dependencies
-Run the following command to install dependencies: ```pip install -r uplm.txt```
+Run the following command to install dependencies: ```pip install -r requirements.txt```
 
 ### Datatset Preparation
 - All datasets along with their splits (train, test, and unlabeled) can be downloaded from [here](https://mbzuaiac-my.sharepoint.com/:f:/g/personal/mai_kassem_mbzuai_ac_ae/EsC7ID7TDMNDi9m3O7evTYsBDOjeQG-adN4BPaeSfdqiaQ?e=jNPqRu).
@@ -77,7 +77,7 @@ Run the following command to install dependencies: ```pip install -r uplm.txt```
 ### Example Running
 For example to train the model with "pacs" dataset, seed "1" and, "art" domain, use the following command.
 
- <code> python main.py --dataset_name=pacs --seed=1 --domain=art --un_thresh 0.2 --train_mode upl --out ./outputs </code>
+ <code> python main.py --dataset_name=pacs --seed=1 --domain=photo --un_thresh 0.2 --train_mode uplm --out ./outputs </code>
 
 
 

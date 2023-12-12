@@ -1,23 +1,24 @@
-'''Some helper functions for PyTorch, including:
+"""Some helper functions for PyTorch, including:
     - get_mean_and_std: calculate the mean and std value of dataset.
-'''
+"""
 import logging
 
 import torch
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['get_mean_and_std', 'accuracy', 'AverageMeter']
+__all__ = ["get_mean_and_std", "accuracy", "AverageMeter"]
 
 
 def get_mean_and_std(dataset):
-    '''Compute the mean and std value of dataset.'''
+    """Compute the mean and std value of dataset."""
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=1, shuffle=False, num_workers=4)
+        dataset, batch_size=1, shuffle=False, num_workers=4
+    )
 
     mean = torch.zeros(3)
     std = torch.zeros(3)
-    logger.info('==> Computing mean and std..')
+    logger.info("==> Computing mean and std..")
     for inputs, targets in dataloader:
         for i in range(3):
             mean[i] += inputs[:, i, :, :].mean()
@@ -45,7 +46,7 @@ def accuracy(output, target, topk=(1,)):
 
 class AverageMeter(object):
     """Computes and stores the average and current value
-       Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
+    Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
     """
 
     def __init__(self):

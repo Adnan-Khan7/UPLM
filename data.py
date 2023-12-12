@@ -1,7 +1,7 @@
 from torchvision import transforms
 from PIL import Image
 from torchvision.datasets import DatasetFolder
-from randaugment import RandAugmentMC
+from utils.randaugment import RandAugmentMC
 import torch
 import numpy as np
 import random
@@ -25,36 +25,7 @@ torch.backends.cudnn.deterministic = True
 class TransformFixMatch(object):
     def __init__(self, dataset_name):
         self.dataset_name = dataset_name
-        if self.dataset_name in ["terra", "pacs", "retina"]:
-            self.weak = transforms.Compose(
-                [
-                    transforms.RandomHorizontalFlip(),
-                    transforms.RandomCrop(
-                        size=224,
-                        padding=int(224 * 0.125),
-                        pad_if_needed=True,
-                        padding_mode="reflect",
-                    ),
-                ]
-            )
-            self.strong = transforms.Compose(
-                [
-                    transforms.RandomHorizontalFlip(),
-                    transforms.RandomCrop(
-                        size=224,
-                        padding=int(224 * 0.125),
-                        pad_if_needed=True,
-                        padding_mode="reflect",
-                    ),
-                    RandAugmentMC(n=2, m=10),
-                ]
-            )
-            self.normalize = transforms.Compose(
-                [
-                    transforms.ToTensor(),
-                ]
-            )
-        elif self.dataset_name in ["vlcs", "office_home"]:
+        if self.dataset_name in ["terra", "pacs", "office_home", "vlcs"]:
             self.weak = transforms.Compose(
                 [
                     transforms.RandomHorizontalFlip(),
@@ -92,9 +63,6 @@ class TransformFixMatch(object):
         return self.normalize(weak), self.normalize(strong)
 
 
-
-
-
 train_tfm = transforms.Compose(
     [
         transforms.Resize((224, 224)),
@@ -113,18 +81,12 @@ test_tfm = transforms.Compose(
 
 def load_dataset(data_path, dataset_name, domain):
     DATA_TRAIN_SET = data_path + "train"
-    # Go one level back
     parent_path = os.path.dirname(os.path.dirname(os.path.dirname(data_path)))
-    # Add unlabeled folder
     unlabeled_path = os.path.join(parent_path, "unlabeled")
-    # Full path for the unlabeled folder
-    # DATA_UNLABELED_SET = unlabeled_path
-    
 
-    # DATA_TEST_SET = data_path + "test"
-    DATA_TEST_SET = os.path.join(parent_path, "test", domain) 
-    # breakpoint()
-    IMG_EXTENSIONS = (".jpg", ".jpeg", ".png", ".tif")    
+    DATA_TEST_SET = os.path.join(parent_path, "test", domain)
+
+    IMG_EXTENSIONS = (".jpg", ".jpeg", ".png", ".tif")
 
     train_set = DatasetFolder(
         DATA_TRAIN_SET,
@@ -153,29 +115,43 @@ def load_dataset(data_path, dataset_name, domain):
         extensions=IMG_EXTENSIONS,
         transform=test_tfm,
     )
-    
-    # unlabeled_set_samples = unlabeled_set.samples[:]
-    # train_image_names = [example[0].split('/train/')[1] for example in train_set.samples]
-    # test_image_names = [example[0].split(f'/{domain}/')[1] for example in test_set.samples]
-    
-    # unlabeled_set_samples = [example for example in unlabeled_set_samples if example[0].split('/unlabeled/')[1] not in train_image_names or example[0].split('/unlabeled/')[1] not in test_image_names]
-    # unlabeled_set.samples = unlabeled_set_samples
+
     unlabeled_set_samples = unlabeled_set.samples[:]
     val_set_samples = val_set.samples[:]
 
-    train_image_names = [example[0].split('/train/')[1] for example in train_set.samples]
-    test_image_names = [example[0].split(f'/{domain}/')[1] for example in test_set.samples]
+    train_image_names = [
+        example[0].split("/train/")[1] for example in train_set.samples
+    ]
+    test_image_names = [
+        example[0].split(f"/{domain}/")[1] for example in test_set.samples
+    ]
 
-    unlabeled_set_samples = [example for example in unlabeled_set_samples if example[0].split('/unlabeled/')[1] not in train_image_names] 
-    unlabeled_set_samples = [example for example in unlabeled_set_samples if example[0].split('/unlabeled/')[1] not in test_image_names]
+    unlabeled_set_samples = [
+        example
+        for example in unlabeled_set_samples
+        if example[0].split("/unlabeled/")[1] not in train_image_names
+    ]
+    unlabeled_set_samples = [
+        example
+        for example in unlabeled_set_samples
+        if example[0].split("/unlabeled/")[1] not in test_image_names
+    ]
     unlabeled_set.samples = unlabeled_set_samples
     unlabeled_set.targets = [target for (example, target) in unlabeled_set_samples]
 
-    val_set_samples = [example for example in val_set_samples if example[0].split('/unlabeled/')[1] not in train_image_names] 
-    val_set_samples = [example for example in val_set_samples if example[0].split('/unlabeled/')[1] not in test_image_names]
+    val_set_samples = [
+        example
+        for example in val_set_samples
+        if example[0].split("/unlabeled/")[1] not in train_image_names
+    ]
+    val_set_samples = [
+        example
+        for example in val_set_samples
+        if example[0].split("/unlabeled/")[1] not in test_image_names
+    ]
     val_set.samples = val_set_samples
     val_set.targets = [target for (example, target) in val_set_samples]
-    
+
     targets = unlabeled_set.targets
     unlabeled_idx, valid_idx = train_test_split(
         np.arange(len(targets)), test_size=0.1, shuffle=True, stratify=targets
