@@ -1,6 +1,11 @@
+# Improving Pseudo-labelling and Enhancing Robustness for Semi-Supervised Domain Generalization
+Adnan Khan, Mai A. Shaaban, Muhammad Haris Khan
+
+**Mohamed bin Zayed University of Artificial Intelligence, Abu Dhabi, UAE**
+
+[![Static Badge](https://img.shields.io/badge/Paper-Link-yellowgreen?link=https%3A%2F%2Fzenodo.org%2Frecords%2F10104139)]()
 [![python](https://img.shields.io/badge/Python-3.8-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
 [![pytorch](https://img.shields.io/badge/PyTorch-1.12.1-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org)
-# Improving Pseudo-labelling and Enhancing Robustness for Semi-Supervised Domain Generalization
 
 ## Abstract
 
@@ -52,21 +57,22 @@ Comparison of baseline model (FixMatch), our Uncertainty-Guided PL approach (UPL
 ## Usage
 
 ### Dependencies
-Run the following command to install dependencies: ```pip install -r requirements.txt```
+Create an environment using the following command: ```conda env create -n uplm --file environment.yml```
 
 ### Datatset Preparation
-- All datasets along with their splits (train, test, and unlabeled) can be downloaded from [here](https://mbzuaiac-my.sharepoint.com/:f:/g/personal/mai_kassem_mbzuai_ac_ae/EsC7ID7TDMNDi9m3O7evTYsBDOjeQG-adN4BPaeSfdqiaQ?e=jNPqRu).
-- Unzip all datasets.
-- To access the datasets in code, place the downloaded ```datasets``` folder in the root directory of the project. Then, pass the required arguments based on which dataset, seed number, and domain (i.e., --dataset_name, --seed, --domain).
+- Download datasets along with their splits (train, test, and unlabeled) from [here](https://mbzuaiac-my.sharepoint.com/:f:/g/personal/mai_kassem_mbzuai_ac_ae/EsC7ID7TDMNDi9m3O7evTYsBDOjeQG-adN4BPaeSfdqiaQ?e=jNPqRu).
+- Create a folder named ```datasets``` in the root directory of the project.
+- Place the downloaded zip files in the ```datasets``` folder.
+- Unzip the datasets.
 
+### Reproducing Results
 #### Available choices
-- --dataset_name : pacs, office_home, terra, vlcs 
-- --seed: 1, 2, 3 
-- --train_mode : base, upl, ma, uplm
-- --un_thresh : use 0.2, 0.5, 0.5 and 0.7 for PACS, TerraIncognita, OfficeHome and VLCS respectively.
---out your_output_path
-- --domain (dependent on given dataset_name):
-   
+- ```--dataset_name``` pacs, office_home, terra, vlcs 
+- ```--seed``` 1, 2, 3 
+- ```--train_mode``` base, upl, ma, uplm
+- ```--un_thresh``` use 0.2, 0.5, 0.5 and 0.7 for PACS, TerraIncognita, OfficeHome and VLCS respectively.
+- ```--out``` your_output_path
+- ```--domain``` dependent on given dataset_name:
   |    pacs  | office_home|   vlcs    |  terra |
   |----------|------------|-----------|--------|
   | photo    | art        | caltech101| loc_38 |
@@ -74,8 +80,8 @@ Run the following command to install dependencies: ```pip install -r requirement
   | cartoon  | product    | sun09     | loc_46 |
   | sketch   | real_world | voc2007   | loc_100|
 
-### Example Running
-For example to train the model with "pacs" dataset, seed "1" and, "art" domain, use the following command.
+ #### Example 
+To train the model on "pacs" dataset, seed "1" and "photo" domain, use the following command:
 
  <code> python main.py --dataset_name=pacs --seed=1 --domain=photo --un_thresh 0.2 --train_mode uplm --out ./outputs </code>
 
